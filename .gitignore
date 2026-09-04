@@ -1,0 +1,8 @@
+.env
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+vector_db/
+pdf/
+models/
+.cache/
