@@ -108,11 +108,22 @@ class HukukRAG:
             cache_folder=self.cache_dir,
             device="cuda" if torch.cuda.is_available() else "cpu",
         )
-        self.index = faiss.read_index(str(self.vector_db_dir / "hukuk.index"))
+        index = faiss.read_index(str(self.vector_db_dir / "hukuk.index"))
         with (self.vector_db_dir / "metadata.pkl").open("rb") as file:
-            self.records = pickle.load(file)
-        if self.index.ntotal != len(self.records):
-            raise ValueError("FAISS indeksi ile metadata kayit sayisi uyusmuyor.")
+            records = pickle.load(file)
+
+        # Eski surumden kalma "file" alanini yeni "source" alanina tasi.
+        for record in records:
+            if "source" not in record and "file" in record:
+                record["source"] = record.pop("file")
+
+        expected_dim = self.embedder.get_sentence_embedding_dimension()
+        if index.d != expected_dim or index.ntotal != len(records):
+            # Baska bir embedding modeliyle olusturulmus eski/uyumsuz indeks: yeniden olustur.
+            return self.build_index()
+
+        self.index = index
+        self.records = records
 
     def load_llama(self, token):
         if not token or not token.strip():
